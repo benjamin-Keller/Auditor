@@ -1,0 +1,22 @@
+@Auditor_HostAddress = https://localhost:7010
+
+GET {{Auditor_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+
+GET {{Auditor_HostAddress}}/api/superhero
+
+###
+
+POST {{Auditor_HostAddress}}/api/superhero
+Content-Type: application/json
+
+{
+  "name": "Spider-man",
+  "firstName": "Peter",
+  "lastName": "parker",
+  "place": "Queens"
+}
+
+###
