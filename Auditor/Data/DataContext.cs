@@ -22,7 +22,7 @@ public class DataContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfiguration(new AuditEntryConfiguration());
-
     }
+
     public DbSet<SuperHero> SuperHeroes { get; set; }
 }
