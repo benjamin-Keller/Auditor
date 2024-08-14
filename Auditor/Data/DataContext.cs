@@ -1,5 +1,4 @@
 ﻿using Auditor.Models;
-using Auditor.Source;
 using Microsoft.EntityFrameworkCore;
 
 namespace Auditor.Data;
@@ -7,15 +6,17 @@ namespace Auditor.Data;
 public class DataContext : DbContext
 {
     private readonly DbContextOptions<DataContext> _options;
+    private readonly ILogger<DataContext> _logger;
 
-    public DataContext(DbContextOptions<DataContext> options) : base(options)
+    public DataContext(DbContextOptions<DataContext> options, ILogger<DataContext> logger) : base(options)
     {
         _options = options;
+        _logger = logger;
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        AuditorConfig.Configure(optionsBuilder);
+        AuditorConfig.Configure(optionsBuilder, _logger);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

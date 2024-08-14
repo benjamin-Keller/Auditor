@@ -1,43 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.Extensions.Logging;
 
 namespace Auditor.Source;
 
-public class AuditorConfig
-{
-    /// <summary>
-    /// Configures the DbContext options builder with the AuditInterceptor.
-    /// </summary>
-    /// <param name="optionsBuilder">The DbContext options builder.</param>
-    public static void Configure(DbContextOptionsBuilder optionsBuilder)
-    {
-        var auditEntries = new List<AuditEntry>();
-        optionsBuilder.AddInterceptors(new AuditInterceptor(auditEntries));
-    }
-}
-
-public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
-{
-    /// <summary>
-    /// Configures the entity type for AuditEntry.
-    /// </summary>
-    /// <param name="builder">The entity type builder.</param>
-    public void Configure(EntityTypeBuilder<AuditEntry> builder)
-    {
-        builder.ToTable("AuditEntries");
-        builder.HasKey(e => e.Id);
-        builder.Property(e => e.Metadata).IsRequired();
-        builder.Property(e => e.StartTimeUtc).IsRequired();
-        builder.Property(e => e.EndTimeUtc).IsRequired();
-        builder.Property(e => e.Succeeded).IsRequired();
-        builder.Property(e => e.ErrorMessage).IsRequired(false);
-    }
-}
-
-public class AuditInterceptor(List<AuditEntry> auditEntries) : SaveChangesInterceptor
+public class AuditInterceptor(List<AuditEntry> auditEntries, ILogger? logger = null) : SaveChangesInterceptor
 {
     private readonly List<AuditEntry> _auditEntries = auditEntries ?? new();
+    private readonly ILogger? _logger = logger;
 
     /// <summary>
     /// Overrides the SavingChangesAsync method to intercept and track audit entries before saving changes.
@@ -48,10 +18,8 @@ public class AuditInterceptor(List<AuditEntry> auditEntries) : SaveChangesInterc
     /// <returns>The interception result.</returns>
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
     {
-        var saveTask = base.SavingChangesAsync(eventData, result, cancellationToken);
-
         if (eventData.Context is null)
-            return await saveTask;
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
 
         var startTime = DateTime.UtcNow;
 
@@ -62,14 +30,18 @@ public class AuditInterceptor(List<AuditEntry> auditEntries) : SaveChangesInterc
                 Id = Guid.NewGuid(), //To use Version7 Guid
                 StartTimeUtc = startTime,
                 Metadata = entry.DebugView.LongView,
+                AuditType = entry.DebugView.ShortView
             }).ToList();
 
         if (auditEntries.Count == 0)
-            return await saveTask;
+            return await base.SavingChangesAsync(eventData, result, cancellationToken);
+
+        if (_logger is not null)
+            _logger.LogDebug("[Auditor] {0} audit entries tracked at {1}.", auditEntries.Count, startTime);
 
         _auditEntries.AddRange(auditEntries);
 
-        return await saveTask;
+        return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
     /// <summary>
@@ -81,16 +53,15 @@ public class AuditInterceptor(List<AuditEntry> auditEntries) : SaveChangesInterc
     /// <returns>The result of the saved changes.</returns>
     public override async ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
-        var saveTask = base.SavedChangesAsync(eventData, result, cancellationToken);
-
         if (eventData.Context is null)
-            return await saveTask;
+            return await base.SavedChangesAsync(eventData, result, cancellationToken);
 
         var endTime = DateTime.UtcNow;
 
         foreach (var entry in _auditEntries)
         {
             entry.EndTimeUtc = endTime;
+            entry.Duration = entry.EndTimeUtc - entry.StartTimeUtc;
             entry.Succeeded = true;
         }
 
@@ -99,9 +70,12 @@ public class AuditInterceptor(List<AuditEntry> auditEntries) : SaveChangesInterc
             eventData.Context.Set<AuditEntry>().AddRange(_auditEntries);
             _auditEntries.Clear();
             await eventData.Context.SaveChangesAsync(cancellationToken);
+            Console.WriteLine();
+            if (_logger is not null)
+                _logger.LogDebug("[Auditor] {0} changes saved at {1}.", result, endTime);
         }
 
-        return await saveTask;
+        return await base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
     /// <summary>
