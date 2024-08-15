@@ -6,7 +6,7 @@ Auditor is a simple tool to audit your codebase for common issues. It is designe
 
 To use Auditor, follow these steps:
 
-1. Install Auditor package from NuGet.
+1. Install Auditor package from NuGet. (Not yet on NuGet)
 2. Call `builder.Services.SetupAudit()` in your `Program.cs`.
 3. In your `DataContext`:
   - override `OnConfiguring` and call `AuditorConfig.Configure(optionsBuilder);`
