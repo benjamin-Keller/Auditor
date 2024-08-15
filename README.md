@@ -6,7 +6,7 @@ Auditor is a simple tool to audit your codebase for common issues. It is designe
 
 To use Auditor, follow these steps:
 
-1. Install Auditor package from NuGet.
+1. Install Auditor package from NuGet. (Not yet on NuGet)
 2. Call `builder.Services.SetupAudit()` in your `Program.cs`.
 3. In your `DataContext`:
   - override `OnConfiguring` and call `AuditorConfig.Configure(optionsBuilder);`
@@ -20,18 +20,18 @@ Here is an example of how to use Auditor:
 In your `Program.cs`:
 
 ```csharp
-...
+
 builder.Services.AddTransient<SuperHeroService>();
 builder.Services.SetupAudit();
 
 var config = builder.Configuration;
-...
+
 ```
 
 In your `DataContext.cs`:
 
 ```csharp
-...
+
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 {
     AuditorConfig.Configure(optionsBuilder);
@@ -42,7 +42,7 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     base.OnModelCreating(modelBuilder);
     modelBuilder.ApplyConfiguration(new AuditEntryConfiguration());
 }
-...
+
 ```
 
 ## Features
