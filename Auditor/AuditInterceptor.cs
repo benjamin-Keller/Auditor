@@ -4,6 +4,14 @@ using Microsoft.Extensions.Logging;
 
 namespace Auditor.Source;
 
+/// <summary>
+/// Represents an audit interceptor that tracks and saves audit entries before and after saving changes.
+/// </summary>
+/// <remarks>
+/// Initializes a new instance of the <see cref="AuditInterceptor"/> class.
+/// </remarks>
+/// <param name="auditEntries">The list of audit entries.</param>
+/// <param name="logger">The logger.</param>
 public class AuditInterceptor(List<AuditEntry> auditEntries, ILogger? logger = null) : SaveChangesInterceptor
 {
     private readonly List<AuditEntry> _auditEntries = auditEntries ?? new();
@@ -30,7 +38,7 @@ public class AuditInterceptor(List<AuditEntry> auditEntries, ILogger? logger = n
                 Id = Guid.NewGuid(), //To use Version7 Guid
                 StartTimeUtc = startTime,
                 Metadata = entry.DebugView.LongView,
-                AuditType = entry.DebugView.ShortView
+                AuditType = entry.State.ToString()
             }).ToList();
 
         if (auditEntries.Count == 0)
@@ -84,8 +92,34 @@ public class AuditInterceptor(List<AuditEntry> auditEntries, ILogger? logger = n
     /// <param name="eventData">The DbContext error event data.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    public override async Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
     {
-        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+        if (eventData.Context is null)
+        {
+            await base.SaveChangesFailedAsync(eventData, cancellationToken);
+            return;
+        }
+
+        var endTime = DateTime.UtcNow;
+
+        foreach (var entry in _auditEntries)
+        {
+            entry.EndTimeUtc = endTime;
+            entry.Duration = entry.EndTimeUtc - entry.StartTimeUtc;
+            entry.Succeeded = true;
+        }
+
+        if (_auditEntries.Count > 0)
+        {
+            eventData.Context.Set<AuditEntry>().AddRange(_auditEntries);
+            await eventData.Context.SaveChangesAsync(cancellationToken);
+            Console.WriteLine();
+            if (_logger is not null)
+                _logger.LogDebug("[Auditor] {0} changes failed at {1}.", _auditEntries.Count, endTime);
+
+            _auditEntries.Clear();
+        }
+
+        await base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
 }
