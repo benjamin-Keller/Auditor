@@ -7,6 +7,7 @@ public class AuditEntry
 {
     [Key]
     public Guid Id { get; set; }
+    public long Sequence { get; set; }
     [NotMapped]
     public string AuditType { get; set; } = string.Empty;
     public string Metadata { get; set; } = string.Empty;

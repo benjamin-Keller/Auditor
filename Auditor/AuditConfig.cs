@@ -28,6 +28,7 @@ public class AuditEntryConfiguration : IEntityTypeConfiguration<AuditEntry>
     {
         builder.ToTable("AuditEntries");
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.Sequence).UseIdentityColumn();
         builder.Property(e => e.Metadata).IsRequired();
         builder.Property(e => e.StartTimeUtc).IsRequired();
         builder.Property(e => e.EndTimeUtc).IsRequired();

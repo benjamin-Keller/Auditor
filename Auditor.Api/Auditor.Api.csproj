@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Auditor.Source\Auditor.csproj" />
+    <ProjectReference Include="..\Auditor\Auditor.csproj" />
   </ItemGroup>
 
 </Project>
