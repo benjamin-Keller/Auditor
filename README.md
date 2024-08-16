@@ -20,18 +20,15 @@ Here is an example of how to use Auditor:
 In your `Program.cs`:
 
 ```csharp
-
 builder.Services.AddTransient<SuperHeroService>();
 builder.Services.SetupAudit();
 
 var config = builder.Configuration;
-
 ```
 
 In your `DataContext.cs`:
 
 ```csharp
-
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 {
     AuditorConfig.Configure(optionsBuilder);
@@ -42,7 +39,6 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
     base.OnModelCreating(modelBuilder);
     modelBuilder.ApplyConfiguration(new AuditEntryConfiguration());
 }
-
 ```
 
 ## Features
@@ -50,6 +46,27 @@ protected override void OnModelCreating(ModelBuilder modelBuilder)
 - Automatic auditing of your database.
 - Provides actionable insights to improve code quality.
 - Easy to implement database auditing.
+
+## Logging
+
+Optionally, ILogger can be used to add Logging.
+
+Logging happens:
+- While saving entries.
+- After entries are saved, and
+- When entries have failed.
+
+Logging can be seen while using
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"
+    }
+  }
+}
+```
 
 ## Contributing
 
